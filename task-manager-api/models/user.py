@@ -1,8 +1,11 @@
-from database import db
-from datetime import datetime
-import hashlib
+from sqlalchemy import func
+from werkzeug.security import check_password_hash, generate_password_hash
 
-class User(db.Model):
+from database import PersistenceMixin, db
+from utils.helpers import utcnow
+
+
+class User(PersistenceMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -11,28 +14,51 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), default='user')
     active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     def to_dict(self):
+        # o hash da senha nunca é serializado
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
-            'password': self.password,
             'role': self.role,
             'active': self.active,
-            'created_at': str(self.created_at)
+            'created_at': str(self.created_at),
         }
 
     def set_password(self, pwd):
-
-        self.password = hashlib.md5(pwd.encode()).hexdigest()
+        # pbkdf2 funciona em qualquer build do Python (scrypt depende do OpenSSL)
+        self.password = generate_password_hash(pwd, method='pbkdf2:sha256')
 
     def check_password(self, pwd):
-        return self.password == hashlib.md5(pwd.encode()).hexdigest()
+        return check_password_hash(self.password, pwd)
 
     def is_admin(self):
-        if self.role == 'admin':
-            return True
-        else:
-            return False
+        return self.role == 'admin'
+
+    @staticmethod
+    def find(user_id):
+        return db.session.get(User, user_id)
+
+    @staticmethod
+    def find_by_email(email):
+        return db.session.scalars(db.select(User).where(User.email == email)).first()
+
+    @staticmethod
+    def list_all():
+        return db.session.scalars(db.select(User).order_by(User.id)).all()
+
+    @staticmethod
+    def task_counts():
+        from models.task import Task
+        rows = db.session.execute(
+            db.select(Task.user_id, func.count(Task.id)).where(Task.user_id.isnot(None)).group_by(Task.user_id)
+        ).all()
+        return dict(rows)
+
+    def delete_with_tasks(self):
+        from models.task import Task
+        db.session.execute(db.delete(Task).where(Task.user_id == self.id))
+        db.session.delete(self)
+        db.session.commit()
