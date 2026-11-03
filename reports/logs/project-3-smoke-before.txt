@@ -1,0 +1,56 @@
+OK   GET    / -> 200
+     {"message": "Task Manager API", "version": "1.0"}
+OK   GET    /health -> 200
+     {"status": "ok", "timestamp": "<volatile>"}
+OK   GET    /tasks -> 200
+     [{"category_id": 1, "category_name": "Backend", "created_at": "<volatile>", "description": "Adicionar autenticação real com JWT", "due_date": "<volatile>", "id": 1, "overdue": true, "priority": 1, "status": "pending", "tags": [], "title": "Implementar autenticação JWT", "updated_at": "<volatile>", "user_id": 1, "user_name": "João Silva"}, {"category_id": 2, "category_name": "Frontend", "created_at
+OK   GET    /tasks/1 -> 200
+     {"category_id": 1, "created_at": "<volatile>", "description": "Adicionar autenticação real com JWT", "due_date": "<volatile>", "id": 1, "overdue": true, "priority": 1, "status": "pending", "tags": [], "title": "Implementar autenticação JWT", "updated_at": "<volatile>", "user_id": 1}
+OK   GET    /tasks/999 -> 404
+     {"error": "Task não encontrada"}
+OK   GET    /tasks/search?q=API&status=pending -> 200
+     [{"category_id": 1, "created_at": "<volatile>", "description": "Endpoints retornam todos os registros", "due_date": "<volatile>", "id": 5, "priority": 3, "status": "pending", "tags": [], "title": "Adicionar paginação na API", "updated_at": "<volatile>", "user_id": 1}]
+OK   GET    /tasks/search?priority=1 -> 200
+     [{"category_id": 1, "created_at": "<volatile>", "description": "Adicionar autenticação real com JWT", "due_date": "<volatile>", "id": 1, "priority": 1, "status": "pending", "tags": [], "title": "Implementar autenticação JWT", "updated_at": "<volatile>", "user_id": 1}, {"category_id": 4, "created_at": "<volatile>", "description": "Filtro não funciona com caracteres especiais", "due_date": "<volatil
+OK   GET    /tasks/stats -> 200
+     {"cancelled": 1, "completion_rate": 10.0, "done": 1, "in_progress": 2, "overdue": 2, "pending": 6, "total": 10}
+OK   POST   /tasks -> 201
+     {"category_id": 1, "created_at": "<volatile>", "description": "", "due_date": "<volatile>", "id": 11, "priority": 2, "status": "pending", "tags": ["a", "b"], "title": "Nova task", "updated_at": "<volatile>", "user_id": 1}
+OK   POST   /tasks -> 400
+     {"error": "Título muito curto"}
+OK   PUT    /tasks/11 -> 200
+     {"category_id": 1, "created_at": "<volatile>", "description": "", "due_date": "<volatile>", "id": 11, "priority": 5, "status": "done", "tags": ["a", "b"], "title": "Nova task", "updated_at": "<volatile>", "user_id": 1}
+OK   DELETE /tasks/11 -> 200
+     {"message": "Task deletada com sucesso"}
+OK   GET    /users -> 200
+     [{"active": true, "created_at": "<volatile>", "email": "joao@email.com", "id": 1, "name": "João Silva", "role": "admin", "task_count": 4}, {"active": true, "created_at": "<volatile>", "email": "maria@email.com", "id": 2, "name": "Maria Santos", "role": "user", "task_count": 3}, {"active": true, "created_at": "<volatile>", "email": "pedro@email.com", "id": 3, "name": "Pedro Oliveira", "role": "mana
+OK   GET    /users/1 -> 200
+     {"active": true, "created_at": "<volatile>", "email": "joao@email.com", "id": 1, "name": "João Silva", "password": "81dc9bdb52d04dc20036dbd8313ed055", "role": "admin", "tasks": [{"category_id": 1, "created_at": "<volatile>", "description": "Adicionar autenticação real com JWT", "due_date": "<volatile>", "id": 1, "priority": 1, "status": "pending", "tags": [], "title": "Implementar autenticação JWT
+OK   GET    /users/1/tasks -> 200
+     [{"created_at": "<volatile>", "description": "Adicionar autenticação real com JWT", "due_date": "<volatile>", "id": 1, "overdue": true, "priority": 1, "status": "pending", "title": "Implementar autenticação JWT"}, {"created_at": "<volatile>", "description": "Filtro não funciona com caracteres especiais", "due_date": "<volatile>", "id": 4, "overdue": true, "priority": 1, "status": "pending", "title
+OK   POST   /users -> 201
+     {"active": true, "created_at": "<volatile>", "email": "teste@email.com", "id": 4, "name": "Teste", "password": "e19d5cd5af0378da05f63f891c7467af", "role": "user"}
+OK   POST   /users -> 409
+     {"error": "Email já cadastrado"}
+OK   PUT    /users/4 -> 200
+     {"active": true, "created_at": "<volatile>", "email": "teste@email.com", "id": 4, "name": "Teste 2", "password": "e19d5cd5af0378da05f63f891c7467af", "role": "manager"}
+OK   POST   /login -> 200
+     {"message": "Login realizado com sucesso", "token": "fake-jwt-token-1", "user": {"active": true, "created_at": "<volatile>", "email": "joao@email.com", "id": 1, "name": "João Silva", "password": "81dc9bdb52d04dc20036dbd8313ed055", "role": "admin"}}
+OK   POST   /login -> 401
+     {"error": "Credenciais inválidas"}
+OK   DELETE /users/4 -> 200
+     {"message": "Usuário deletado com sucesso"}
+OK   GET    /reports/summary -> 200
+     {"generated_at": "<volatile>", "overdue": {"count": 2, "tasks": [{"days_overdue": 3, "due_date": "<volatile>", "id": 1, "title": "Implementar autenticação JWT"}, {"days_overdue": 1, "due_date": "<volatile>", "id": 4, "title": "Corrigir bug no filtro de busca"}]}, "overview": {"total_categories": 4, "total_tasks": 10, "total_users": 3}, "recent_activity": {"tasks_completed_last_7_days": 1, "tasks_c
+OK   GET    /reports/user/1 -> 200
+     {"statistics": {"cancelled": 0, "completion_rate": 0.0, "done": 0, "high_priority": 2, "in_progress": 0, "overdue": 2, "pending": 4, "total_tasks": 4}, "user": {"email": "joao@email.com", "id": 1, "name": "João Silva"}}
+OK   GET    /categories -> 200
+     [{"color": "#3498db", "created_at": "<volatile>", "description": "Tarefas de backend", "id": 1, "name": "Backend", "task_count": 6}, {"color": "#2ecc71", "created_at": "<volatile>", "description": "Tarefas de frontend", "id": 2, "name": "Frontend", "task_count": 1}, {"color": "#e74c3c", "created_at": "<volatile>", "description": "Tarefas de infraestrutura", "id": 3, "name": "DevOps", "task_count":
+OK   POST   /categories -> 201
+     {"color": "#123456", "created_at": "<volatile>", "description": "", "id": 5, "name": "Nova Cat"}
+OK   PUT    /categories/5 -> 200
+     {"color": "#123456", "created_at": "<volatile>", "description": "", "id": 5, "name": "Cat Editada"}
+OK   DELETE /categories/5 -> 200
+     {"message": "Categoria deletada"}
+
+RESULT: 27/27 checks passed

@@ -1,0 +1,18 @@
+OK   POST   /api/checkout -> 200
+     {"enrollment_id": 2, "msg": "Sucesso"}
+OK   POST   /api/checkout -> 400
+     "Pagamento recusado"
+OK   POST   /api/checkout -> 200
+     {"enrollment_id": 3, "msg": "Sucesso"}
+OK   POST   /api/checkout -> 400
+     "Bad Request"
+OK   POST   /api/checkout -> 404
+     "Curso não encontrado"
+OK   GET    /api/admin/financial-report -> 200
+     [{"course": "Docker", "revenue": 994, "students": [{"paid": 497, "student": "Guilherme"}, {"paid": 497, "student": "Leonan"}]}, {"course": "Clean Architecture", "revenue": 997, "students": [{"paid": 997, "student": "Leonan"}]}]
+OK   DELETE /api/users/1 -> 200
+     "Usuário deletado, mas as matrículas e pagamentos ficaram sujos no banco."
+OK   GET    /api/admin/financial-report -> 200
+     [{"course": "Clean Architecture", "revenue": 997, "students": [{"paid": 997, "student": "Unknown"}]}, {"course": "Docker", "revenue": 994, "students": [{"paid": 497, "student": "Unknown"}, {"paid": 497, "student": "Guilherme"}]}]
+
+RESULT: 8/8 checks passed
