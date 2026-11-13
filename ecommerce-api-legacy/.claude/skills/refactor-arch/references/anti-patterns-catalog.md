@@ -29,10 +29,16 @@ How to use: for each entry, search for the **signals** (grep is a good triage), 
 - **Impact**: impossible to test in isolation; any change affects everything.
 - **Fix**: playbook P3.
 
-### AP-04 Unprotected dangerous endpoints
-- **Signals**: routes such as `/admin/*`, `/reset`, `/debug`, `/query`, `/exec` with no authentication/authorization; endpoints that run client-supplied SQL/commands; endpoints that delete/reset data or users without auth/ownership check.
-- **Impact**: full database takeover by any caller.
-- **Fix**: playbook P8.
+### AP-04 Unprotected dangerous endpoints / missing authentication and ownership checks
+- **Signals**:
+  - routes such as `/admin/*`, `/reset`, `/debug`, `/query`, `/exec` with no authentication/authorization; endpoints that run client-supplied SQL/commands;
+  - **any write route (POST/PUT/PATCH/DELETE) with no authentication** — build a route table (method, path, auth required?, owner/role check?) and flag every write row without auth, except explicit public ones (`/login`, self-signup that cannot set `role`/`active`);
+  - **credential/privilege mutation without auth** — an update route that accepts `password`, `email`, `role`, `active`, `is_admin` for the user identified only by the URL id (account takeover, e.g. changing the seeded admin's password);
+  - **no ownership check (IDOR)** — a route that receives `/<id>` of a user-owned resource (user, task, order, ...) and updates/deletes it without comparing the owner with the authenticated principal, or accepts an owner field (`user_id`) from the body for someone else;
+  - a client-controlled `role`/privilege field accepted on create/update without an admin check.
+- **Impact**: full takeover by any anonymous caller (privilege escalation, password reset of any account, data destruction), or by any authenticated user over other users' data.
+- **Fix**: playbook P8 (A: remove/guard dangerous endpoints; B: authentication on every write route; C: owner-or-admin checks).
+- **Report rule**: the finding's `Recommendation` must enumerate **every** unprotected write route and the rule that applies to each (auth only / owner-or-admin / admin only), because Phase 3 has to implement the whole recommendation.
 
 ### AP-05 Broken password storage / homemade crypto
 - **Signals**: passwords stored/compared in plaintext (`senha = '...'` compared in SQL); fast unsalted hashes (`md5`, `sha1`, `sha256` alone) for passwords; custom "hash" functions (base64 loops, XOR); default fallback password (`pwd or "123456"`); fake tokens (`'fake-jwt-token-' + id`).

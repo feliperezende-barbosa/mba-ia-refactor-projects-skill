@@ -78,7 +78,8 @@ Wait for the answer. If the user answers anything other than an explicit yes, en
 1. Read `references/mvc-guidelines.md` and `references/refactoring-playbook.md`.
 2. **Capture a behavioural baseline before changing code**: boot the original application (see Phase 1 entry point; pick a free port if the default is taken, e.g. macOS AirPlay occupies 5000) and call every endpoint recorded in Phase 1, saving status codes and response shapes. Use a fresh/seeded database.
 3. Design the target structure from the guidelines (adapt the layout to the stack's conventions; keep the original boot command working). Present the planned tree in one short block.
-4. Refactor in this order, running a syntax/boot check after each step:
+4. **Apply every CRITICAL recommendation in full.** Before refactoring, build a checklist from the Phase 2 report: one line per CRITICAL finding, split into one item per clause of its `Description`/`Recommendation` and per file/route/secret it lists (e.g. AP-04 → one item per unprotected write route plus the ownership rule; AP-05 → hash *and* token; AP-01 → every secret). A CRITICAL is "done" only when **all** its items are implemented; implementing only the part that is easiest (e.g. admin-only deletes while `DELETE /tasks/<id>` or `PUT /users/<id>` stay anonymous) is a failure. Keep it open while refactoring (step 5) and tick items only after validation (step 6). Do not rely on the catalog pattern alone — the report text is the source of truth. If an item is impossible without a contract decision, ask the user instead of silently dropping it.
+5. Refactor in this order, running a syntax/boot check after each step:
    1. Configuration module — move every hardcoded secret/setting to env-driven config (playbook P1).
    2. Database/connection layer and **Models** — parameterized queries / ORM, no global connection, schema + seed isolated (P2, P5, P9, P13).
    3. **Services / utils** — external integrations (e-mail, payment, notifications), password hashing, shared helpers (P6, P10).
@@ -87,13 +88,14 @@ Wait for the answer. If the user answers anything other than an explicit yes, en
    6. **Error handling middleware** — centralized handler, no leaking of internals (P7).
    7. **Composition root** — a small entry file that wires config, DB, routes and middlewares (P5).
    8. Replace deprecated APIs and clean low-severity items (P11–P13). Remove dead code and unused imports.
-   9. Remove or protect dangerous endpoints (P8) and delete the old monolithic files that were replaced.
-5. **Validate** (mandatory, never skip, never claim success without running it):
+   9. Remove or protect dangerous endpoints, authenticate every write route and enforce ownership (P8 A+B+C) and delete the old monolithic files that were replaced.
+6. **Validate** (mandatory, never skip, never claim success without running it):
    - Install dependencies if the manifest changed, then **boot the application** and confirm it starts without errors.
    - Call **every endpoint recorded in Phase 1** against the refactored app and compare with the baseline: same status codes and same response shapes (except the documented security/correctness changes).
+   - **Verify the CRITICAL checklist item by item with real requests**, not by reading code: for authentication/authorization findings send the negative cases (no token → 401, non-owner token → 403, owner/admin token → success) for **every** write route, including password/role changes on another user (e.g. anonymous `PUT /users/<admin id>` with a new password must fail). Update the smoke/baseline scripts so they authenticate where needed.
    - Re-run the catalog against the new code (search for the detection signals: string-concatenated SQL, hardcoded secrets, `debug=True`, global state, fat controllers, deprecated calls) and confirm **zero CRITICAL/HIGH remain**.
    - If anything fails, fix and re-run the validation. Do not finish with a failing validation; if something cannot be fixed, report it explicitly as a known issue.
-6. Print:
+7. Print:
 
 ```
 ================================
@@ -108,6 +110,7 @@ PHASE 3: REFACTORING COMPLETE
 ## Validation
   ✓ Application boots without errors
   ✓ All endpoints respond correctly (<N>/<N>)
+  ✓ CRITICAL checklist: <k>/<k> items implemented and verified (<AP-id: item>, ...)
   ✓ Zero CRITICAL/HIGH anti-patterns remaining
   ✗ <anything that failed, with detail>   (omit if everything passed)
 ================================

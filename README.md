@@ -556,7 +556,8 @@ Escolhi esse conjunto porque cada item apareceu na análise manual dos três pro
 |---|---|
 | macOS ocupa a porta 5000 (AirPlay) → baseline retornava 403 | Skill manda escolher porta livre; entry points passaram a ler `PORT` do ambiente |
 | `hashlib.scrypt` ausente no Python 3.9/LibreSSL (padrão do `werkzeug`) quebrou o seed | Playbook P6 passou a usar `pbkdf2:sha256` explicitamente e a documentar o motivo |
-| Proteger endpoints perigosos sem quebrar o contrato | P8: remover o que não tem forma segura (`/admin/query`) e proteger o resto com token configurado por ambiente (403 se não configurado) |
+| Proteger endpoints perigosos sem quebrar o contrato | P8 (A): remover o que não tem forma segura (`/admin/query`) e proteger o resto com token configurado por ambiente (403 se não configurado) |
+| Skill aplicou só parte do AP-04 (deletes admin) e deixou `DELETE /tasks/<id>` e `PUT /users/<id>` anônimos | P8 ampliado (B: auth em toda rota de escrita; C: dono-ou-admin) e Fase 3 com checklist por CRITICAL, validado com requisições negativas (401/403) em cada rota de escrita |
 | Projeto 3 já em camadas: transformações diferentes de um monolito | `mvc-guidelines.md` tem layout específico "já em camadas" (adicionar `controllers/`, afinar rotas, mover regras para models) |
 | Node com driver de callbacks e uma única conexão: transações podiam intercalar | P11/P15: wrapper promisificado com fila que serializa transações |
 | Relatório do projeto 2 tinha ordem não determinística (ordem de conclusão dos callbacks) | Um `JOIN` ordenado por curso/matrícula |
@@ -722,7 +723,7 @@ RESULT: 27/27 checks passed
 |---|---|---|
 | 1 | `senha` não é mais retornada em `/usuarios`; `/health` não expõe `secret_key`/`debug`/`db_path`; `POST /admin/query` removido; `POST /admin/reset-db` exige `X-Admin-Token`; erros ganham `"sucesso": false`; `PUT /pedidos/<id>/status` de pedido inexistente → 404 | AP-01/04/08/15 |
 | 2 | `GET /api/admin/financial-report` e `DELETE /api/users/:id` exigem `X-Admin-Token`; pagamento recusado não cria mais o usuário; senha obrigatória para novo usuário; delete remove matrículas/pagamentos; relatório ordenado por curso | AP-04/05/10/16 |
-| 3 | `password` removido das respostas; `token` agora é assinado (itsdangerous); `DELETE /users/<id>`, `DELETE /categories/<id>`, criar usuário com `role` ≠ `user` e alterar `role`/`active` exigem Bearer de admin; categoria removida desvincula suas tasks; **rodar `python seed.py` de novo** (hash novo) | AP-04/05/08/10 |
+| 3 | `password` removido das respostas; `token` agora é assinado (itsdangerous); **todas as rotas de escrita exigem Bearer** (401 sem token): `PUT /users/<id>` só pelo próprio usuário ou admin (inclui troca de senha), `PUT/DELETE /tasks/<id>` só pelo dono ou admin (task sem dono: admin), `POST /tasks` não-admin só cria para si, `DELETE /users/<id>` e `POST/PUT/DELETE /categories` só admin, criar usuário com `role` ≠ `user` e alterar `role`/`active` exigem admin; categoria removida desvincula suas tasks; **rodar `python seed.py` de novo** (hash novo) | AP-04/05/08/10 |
 
 ### Observações sobre o comportamento em stacks diferentes
 
@@ -782,7 +783,7 @@ Com a aplicação no ar, rode o smoke test correspondente (somente stdlib do Pyt
 cd scripts
 python smoke_project1.py http://localhost:5001              # espera: RESULT: 25/25 checks passed
 ADMIN_TOKEN=dev-token python smoke_project2.py http://localhost:3000   # espera: RESULT: 8/8 checks passed
-python smoke_project3.py http://localhost:5001              # espera: RESULT: 27/27 checks passed
+python smoke_project3.py http://localhost:5001              # espera: RESULT: 27/27 + SECURITY: 28/28 checks passed
 ```
 
 Cada script chama todos os endpoints originais, imprime status e corpo e termina com código de saída ≠ 0 se algum status divergir. Compare com os logs `reports/logs/*-before.txt` para ver as únicas diferenças esperadas (as mudanças de contrato listadas acima).

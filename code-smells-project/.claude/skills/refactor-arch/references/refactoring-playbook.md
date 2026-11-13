@@ -2,7 +2,7 @@
 
 Each pattern = **problem → transformation → before/after**. Examples use Python/Flask and Node/Express; apply the same transformation in other stacks. Patterns map to catalog IDs.
 
-Contents: P1 Config · P2 Parameterized queries · P3 Split god file · P4 Thin routes/fat-controller → controller · P5 Remove global state / DI · P6 Password hashing · P7 Central error handler · P8 Dangerous endpoints · P9 N+1 · P10 Deduplicate · P11 Async flow · P12 Deprecated APIs · P13 Constants · P14 Sensitive data · P15 Transactions & integrity
+Contents: P1 Config · P2 Parameterized queries · P3 Split god file · P4 Thin routes/fat-controller → controller · P5 Remove global state / DI · P6 Password hashing · P7 Central error handler · P8 Dangerous endpoints, write auth & ownership · P9 N+1 · P10 Deduplicate · P11 Async flow · P12 Deprecated APIs · P13 Constants · P14 Sensitive data · P15 Transactions & integrity
 
 ---
 
@@ -238,7 +238,11 @@ Keep the original error JSON keys (`erro` vs `error`) so the contract does not c
 
 ---
 
-## P8 — Remove or protect dangerous endpoints (AP-04)
+## P8 — Remove or protect dangerous endpoints; authenticate writes; check ownership (AP-04)
+
+P8 has three parts and **all three apply whenever AP-04 is reported**. Build the route table first (method, path, who may call it) and implement every row.
+
+### A. Dangerous endpoints (SQL/command execution, reset/debug)
 
 **Before**
 ```python
@@ -261,6 +265,57 @@ def require_admin_token(fn):
     return wrapper
 ```
 When `ADMIN_TOKEN` is unset the endpoint always answers 403.
+
+### B. Authentication on every write route
+
+Every POST/PUT/PATCH/DELETE must resolve a principal from a **signed** token (P6) and answer **401** without one. Only explicit exceptions stay public: login and self-signup (which must not be able to set `role`/`active`/privilege fields — those need an admin).
+```python
+# middlewares/auth.py
+def current_user():            # None when header missing/invalid/expired
+    ...
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*a, **kw):
+        user = current_user()
+        if user is None or not user.active:
+            raise UnauthorizedError("Autenticação necessária")   # 401
+        g.current_user = user
+        return fn(*a, **kw)
+    return wrapper
+def admin_required(fn): ...   # login_required + role check → 403
+```
+```javascript
+const requireAuth = (req, res, next) => {
+  const user = verifyBearer(req.headers.authorization);
+  if (!user) return next(new HttpError(401, 'Autenticação necessária'));
+  req.user = user; next();
+};
+router.delete('/tasks/:id', requireAuth, controller.remove);
+```
+Decorate the **route registration** (or the controller entry) so a new write route cannot be added without a visible auth decision.
+
+### C. Ownership (owner-or-admin) on user-owned resources
+
+Authentication is not enough: user A must not edit or delete user B's data, and nobody but an admin may change another account's credentials or privileges.
+```python
+def ensure_owner_or_admin(owner_id):
+    user = g.current_user
+    if not user.is_admin() and user.id != owner_id:
+        raise ForbiddenError("Sem permissão para este recurso")   # 403
+
+def update_user(user_id):                 # PUT /users/<id> — includes password change
+    ensure_owner_or_admin(user_id)        # a user edits only themselves
+    if "role" in data or "active" in data: ensure_admin()
+def delete_task(task_id):
+    task = _get_task_or_404(task_id)
+    ensure_owner_or_admin(task.user_id)   # resource without owner → admin only
+```
+- Run the 401/403 check **before** loading/validating the body, but after route matching, so unauthenticated callers cannot probe which ids exist (still 404 for admins/owners).
+- Create routes: force the owner to the caller (default `user_id = current user`); only admins may create on behalf of others.
+- Shared resources without an owner (e.g. categories): choose explicitly — authenticated, or admin only for destructive actions — and document it.
+- Read routes are out of P8 unless they leak data covered by AP-08.
+
+**Verify (negative tests are mandatory)** for each write route: anonymous → 401; authenticated non-owner → 403; owner → 2xx; admin → 2xx. In particular: anonymous `PUT /users/<admin id>` with `{"password": ...}` must be 401, and a regular user doing the same must be 403. Update seed/smoke scripts to authenticate and list these contract changes.
 
 ---
 

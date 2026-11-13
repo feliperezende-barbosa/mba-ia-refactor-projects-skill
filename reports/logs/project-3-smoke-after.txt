@@ -35,7 +35,7 @@ OK   POST   /users -> 409
 OK   PUT    /users/4 -> 200
      {"active": true, "created_at": "<volatile>", "email": "teste@email.com", "id": 4, "name": "Teste 2", "role": "manager"}
 OK   POST   /login -> 200
-     {"message": "Login realizado com sucesso", "token": "eyJ1c2VyX2lkIjoxfQ.auo1Xg.rtLQ6sQC61Z5SbKZN5vNUfRLrhk", "user": {"active": true, "created_at": "<volatile>", "email": "joao@email.com", "id": 1, "name": "João Silva", "role": "admin"}}
+     {"message": "Login realizado com sucesso", "token": "eyJ1c2VyX2lkIjoxfQ.avcOSg.SPhHhCk8uf3nTS1-y-HZEqCaP9M", "user": {"active": true, "created_at": "<volatile>", "email": "joao@email.com", "id": 1, "name": "João Silva", "role": "admin"}}
 OK   POST   /login -> 401
      {"error": "Credenciais inválidas"}
 OK   DELETE /users/4 -> 200
@@ -54,3 +54,33 @@ OK   DELETE /categories/5 -> 200
      {"message": "Categoria deletada"}
 
 RESULT: 27/27 checks passed
+OK   [security] anônimo PUT /users/1 (trocar senha do admin) -> 401 (esperado 401)
+OK   [security] anônimo POST /users role admin -> 401 (esperado 401)
+OK   [security] anônimo DELETE /users/2 -> 401 (esperado 401)
+OK   [security] anônimo POST /tasks -> 401 (esperado 401)
+OK   [security] anônimo PUT /tasks/1 -> 401 (esperado 401)
+OK   [security] anônimo DELETE /tasks/1 -> 401 (esperado 401)
+OK   [security] anônimo POST /categories -> 401 (esperado 401)
+OK   [security] anônimo PUT /categories/1 -> 401 (esperado 401)
+OK   [security] anônimo DELETE /categories/1 -> 401 (esperado 401)
+OK   [security] token inválido DELETE /tasks/1 -> 401 (esperado 401)
+OK   [security] usuário PUT /users/1 (senha do admin) -> 403 (esperado 403)
+OK   [security] usuário DELETE /users/1 -> 403 (esperado 403)
+OK   [security] usuário PUT /users/2 role admin (auto-promoção) -> 403 (esperado 403)
+OK   [security] usuário POST /users role admin -> 403 (esperado 403)
+OK   [security] usuário DELETE /tasks/<task do admin> -> 403 (esperado 403)
+OK   [security] usuário PUT /tasks/<task do admin> -> 403 (esperado 403)
+OK   [security] usuário PUT /tasks/<task sem dono> -> 403 (esperado 403)
+OK   [security] usuário POST /tasks para outro usuário -> 403 (esperado 403)
+OK   [security] usuário reatribui própria task a outro -> 403 (esperado 403)
+OK   [security] usuário POST /categories -> 403 (esperado 403)
+OK   [security] usuário DELETE /categories/1 -> 403 (esperado 403)
+OK   [security] dono PUT /users/2 (próprio nome) -> 200 (esperado 200)
+OK   [security] dono PUT /tasks/2 (própria task) -> 200 (esperado 200)
+OK   [security] usuário POST /tasks sem user_id (vira dono) -> 201 (esperado 201)
+OK   [security] admin PUT /users/2 role -> 200 (esperado 200)
+OK   [security] admin PUT /tasks/<task sem dono> -> 200 (esperado 200)
+OK   [security] admin DELETE /tasks/<task do admin> -> 200 (esperado 200)
+OK   [security] senha do admin permanece válida
+
+SECURITY: 28/28 checks passed

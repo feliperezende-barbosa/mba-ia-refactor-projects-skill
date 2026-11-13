@@ -36,11 +36,18 @@ Description: Senhas guardadas com `hashlib.md5` sem sal (rápido e quebrável po
 Impact: Vazamento do banco expõe senhas rapidamente; qualquer um forja o token de qualquer usuário.
 Recommendation: `werkzeug.security` (hash salgado e lento) e token assinado com expiração via `itsdangerous` (P6).
 
-### [CRITICAL] AP-04 Unprotected Dangerous Endpoints
-File: routes/user_routes.py:43-91, routes/user_routes.py:93-132, routes/user_routes.py:135-151, routes/task_routes.py:226-238, routes/report_routes.py:212-224
-Description: Nenhum endpoint exige autenticação: qualquer cliente cria usuário com `role: "admin"` (l.52, 71-78), altera `role`/`active` de qualquer usuário (l.119-125), deleta usuários (com todas as suas tasks), tasks e categorias.
-Impact: Escalada de privilégio trivial e destruição de dados por qualquer chamador anônimo.
-Recommendation: Exigir token autenticado nas rotas de escrita/administrativas e restringir `role` a administradores (P8).
+### [CRITICAL] AP-04 Unprotected Dangerous Endpoints / Missing Authentication and Ownership Checks
+File: routes/user_routes.py:42-90, routes/user_routes.py:92-132, routes/user_routes.py:134-151, routes/task_routes.py:85-153, routes/task_routes.py:156-222, routes/task_routes.py:225-238, routes/report_routes.py:167-188, routes/report_routes.py:190-209, routes/report_routes.py:211-224
+Description: Nenhuma das 9 rotas de escrita exige autenticação nem verifica o dono do recurso. `PUT /users/<id>` aceita `password`, `email`, `role` e `active` de qualquer chamador anônimo (l.114-125): basta `{"password": "x"}` em `/users/1` para trocar a senha do admin do `seed.py` e assumir a conta. `POST /users` aceita `role: "admin"` anônimo (l.52, 71-78). `DELETE /users/<id>` (com todas as suas tasks), `DELETE /tasks/<id>`, `POST/PUT /tasks`, `POST/PUT/DELETE /categories` também são anônimos; `user_id` do payload permite criar/reatribuir tasks de qualquer usuário.
+Impact: Tomada de conta, escalada de privilégio e destruição de dados por qualquer chamador anônimo; mesmo com login, qualquer usuário poderia editar/apagar recursos de outro.
+Recommendation (P8 A+B+C), uma regra por rota:
+- `POST /users`: público só com `role: "user"`; `role` ≠ `user` exige admin.
+- `PUT /users/<id>`: autenticado e dono-ou-admin (inclui troca de senha/e-mail); `role`/`active` somente admin.
+- `DELETE /users/<id>`: somente admin.
+- `POST /tasks`: autenticado; não-admin só cria para si (`user_id` omitido = próprio usuário; outro → 403).
+- `PUT /tasks/<id>` e `DELETE /tasks/<id>`: autenticado e dono-ou-admin (task sem dono: somente admin); não-admin não reatribui para outro usuário.
+- `POST/PUT/DELETE /categories`: somente admin (recurso compartilhado, sem dono).
+- Sem token/token inválido → 401; sem permissão → 403; testar os casos negativos em todas as rotas.
 
 ### [HIGH] AP-08 Sensitive Data Exposure
 File: models/user.py:16-25, routes/user_routes.py:28-40, routes/user_routes.py:85-86, routes/user_routes.py:129, routes/user_routes.py:207-210

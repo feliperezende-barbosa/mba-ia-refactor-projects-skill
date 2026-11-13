@@ -43,7 +43,8 @@ Total: <N> findings
 5. Include a finding for **deprecated APIs** whenever any is present (AP-17); if none exist, add a line `Deprecated APIs: none detected` right after the summary.
 6. Minimum 5 findings, containing at least one CRITICAL or HIGH. If you cannot reach that, re-read the sources with the catalog before reporting.
 7. Titles use the catalog name (e.g. "SQL Injection"), optionally followed by the specific symptom.
-8. The report ends with the confirmation prompt (outside the report block):
+8. **A CRITICAL `Recommendation` is a work order for Phase 3**: it must be complete and itemized (every route/file/secret involved and the exact rule per item). For AP-04, enumerate every write route with its rule (auth only / owner-or-admin / admin only).
+9. The report ends with the confirmation prompt (outside the report block):
 
 ```
 Phase 2 complete. Proceed with refactoring (Phase 3)? [y/n]

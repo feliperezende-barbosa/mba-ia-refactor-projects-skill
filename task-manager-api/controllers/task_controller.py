@@ -2,10 +2,11 @@ import logging
 
 from flask import current_app, jsonify, request
 
+from middlewares.auth import ensure_authenticated, ensure_owner_or_admin
 from models.category import Category
 from models.task import Task
 from models.user import User
-from utils.errors import NotFoundError
+from utils.errors import ForbiddenError, NotFoundError
 from utils.validators import parse_optional_int, validate_task_payload
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,12 @@ def _ensure_references(fields):
         raise NotFoundError('Categoria não encontrada')
 
 
+def _ensure_can_assign(fields, user):
+    """Não-admin só atribui tasks a si mesmo."""
+    if not user.is_admin() and fields.get('user_id') != user.id:
+        raise ForbiddenError('Apenas administradores podem atribuir tasks a outros usuários')
+
+
 def list_tasks():
     return jsonify([task.to_listing_dict() for task in Task.list_with_relations()]), 200
 
@@ -34,7 +41,11 @@ def get_task(task_id):
 
 
 def create_task():
+    user = ensure_authenticated()
     fields = validate_task_payload(request.get_json(silent=True))
+    if not user.is_admin():
+        fields['user_id'] = fields['user_id'] or user.id
+        _ensure_can_assign(fields, user)
     _ensure_references(fields)
 
     task = Task(**fields).save()
@@ -46,7 +57,10 @@ def create_task():
 
 def update_task(task_id):
     task = _get_task_or_404(task_id)
+    user = ensure_owner_or_admin(task.user_id)
     fields = validate_task_payload(request.get_json(silent=True), partial=True)
+    if 'user_id' in fields:
+        _ensure_can_assign(fields, user)
     _ensure_references(fields)
 
     for key, value in fields.items():
@@ -57,7 +71,9 @@ def update_task(task_id):
 
 
 def delete_task(task_id):
-    _get_task_or_404(task_id).delete()
+    task = _get_task_or_404(task_id)
+    ensure_owner_or_admin(task.user_id)
+    task.delete()
     logger.info('Task deletada: %s', task_id)
     return jsonify({'message': 'Task deletada com sucesso'}), 200
 

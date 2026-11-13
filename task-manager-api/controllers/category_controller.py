@@ -1,6 +1,5 @@
 from flask import jsonify, request
 
-from middlewares.auth import ensure_admin
 from models.category import Category
 from utils.errors import NotFoundError
 from utils.validators import validate_category_payload
@@ -37,6 +36,5 @@ def update_category(cat_id):
 
 
 def delete_category(cat_id):
-    ensure_admin()
     _get_category_or_404(cat_id).delete_detaching_tasks()
     return jsonify({'message': 'Categoria deletada'}), 200

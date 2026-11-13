@@ -2,7 +2,7 @@ import logging
 
 from flask import jsonify, request
 
-from middlewares.auth import ensure_admin
+from middlewares.auth import ensure_admin, ensure_owner_or_admin
 from models.task import Task
 from models.user import User
 from services.auth_service import generate_token
@@ -57,6 +57,7 @@ def create_user():
 
 
 def update_user(user_id):
+    ensure_owner_or_admin(user_id)
     user = _get_user_or_404(user_id)
     data = exigir_json(request.get_json(silent=True))
 
@@ -87,7 +88,6 @@ def update_user(user_id):
 
 
 def delete_user(user_id):
-    ensure_admin()
     _get_user_or_404(user_id).delete_with_tasks()
     logger.info('Usuário deletado: %s', user_id)
     return jsonify({'message': 'Usuário deletado com sucesso'}), 200
